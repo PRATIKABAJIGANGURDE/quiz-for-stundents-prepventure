@@ -1,9 +1,6 @@
 class Quiz {
     constructor() {
-        this.DASHBOARD_API = process.env.NODE_ENV === 'production'
-            ? 'https://dashboard-for-prepventure.onrender.com/api'
-            : 'http://localhost:3000/api';
-            
+        this.DASHBOARD_API = 'https://dashboard-for-prepventure.onrender.com/api';
         this.init();
     }
 
