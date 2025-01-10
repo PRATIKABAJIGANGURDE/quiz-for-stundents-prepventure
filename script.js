@@ -2,7 +2,35 @@ class Quiz {
     constructor() {
         // Make sure this URL matches your deployed dashboard API
         this.DASHBOARD_API = 'https://quizdashboard-prepventure.onrender.com/api';
+        this.testAPIConnection();  // Add API connection test
         this.init();
+    }
+
+    // Add API connection test method
+    async testAPIConnection() {
+        try {
+            const response = await fetch(`${this.DASHBOARD_API}/exercises/test`);
+            const data = await response.json();
+            console.log('API Test Response:', data);
+            
+            if (!response.ok) {
+                throw new Error('API test failed');
+            }
+        } catch (error) {
+            console.error('API Connection Test Failed:', error);
+            this.showError('Cannot connect to quiz database. Please try again later.');
+        }
+    }
+
+    // Add error display method
+    showError(message) {
+        document.getElementById('questionContainer').innerHTML = `
+            <div class="error-message" style="text-align: center; padding: 20px;">
+                <h2>Error</h2>
+                <p>${message}</p>
+                <button onclick="location.reload()">Try Again</button>
+            </div>
+        `;
     }
 
     async init() {
@@ -35,39 +63,31 @@ class Quiz {
     async loadExerciseData() {
         try {
             const exerciseUrl = `${this.DASHBOARD_API}/exercises/${this.exerciseId}`;
-            console.log('Fetching exercise from:', exerciseUrl);
+            console.log('Attempting to fetch exercise from:', exerciseUrl);
 
-            // First fetch exercise details
             const exerciseResponse = await fetch(exerciseUrl);
+            console.log('Exercise Response Status:', exerciseResponse.status);
             
             if (!exerciseResponse.ok) {
-                throw new Error(`HTTP error! status: ${exerciseResponse.status}`);
+                const errorText = await exerciseResponse.text();
+                console.error('Exercise Response Error:', errorText);
+                throw new Error(`Failed to load exercise (${exerciseResponse.status})`);
             }
             
             this.exercise = await exerciseResponse.json();
-            console.log('Exercise data:', this.exercise);
+            console.log('Exercise Data Received:', this.exercise);
 
-            // Then fetch questions
-            const questionsUrl = `${this.DASHBOARD_API}/exercises/${this.exerciseId}/questions`;
-            console.log('Fetching questions from:', questionsUrl);
-            
-            const questionsResponse = await fetch(questionsUrl);
-            
-            if (!questionsResponse.ok) {
-                throw new Error(`HTTP error! status: ${questionsResponse.status}`);
-            }
-            
-            this.questions = await questionsResponse.json();
-            console.log('Questions data:', this.questions);
-
-            if (!this.questions || this.questions.length === 0) {
+            if (!this.exercise.questions || this.exercise.questions.length === 0) {
                 throw new Error('No questions found for this exercise');
             }
 
+            this.questions = this.exercise.questions;
+            console.log('Questions Data:', this.questions);
+
             this.setupQuiz();
         } catch (error) {
-            console.error('Error loading quiz data:', error);
-            throw new Error(`Failed to load quiz data: ${error.message}`);
+            console.error('Error in loadExerciseData:', error);
+            this.showError(`Failed to load quiz data: ${error.message}`);
         }
     }
 
