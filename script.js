@@ -1,36 +1,8 @@
 class Quiz {
     constructor() {
-        // Make sure this URL matches your deployed dashboard API
+        // Point to your existing quiz dashboard API
         this.DASHBOARD_API = 'https://quizdashboard-prepventure.onrender.com/api';
-        this.testAPIConnection();  // Add API connection test
         this.init();
-    }
-
-    // Add API connection test method
-    async testAPIConnection() {
-        try {
-            const response = await fetch(`${this.DASHBOARD_API}/exercises/test`);
-            const data = await response.json();
-            console.log('API Test Response:', data);
-            
-            if (!response.ok) {
-                throw new Error('API test failed');
-            }
-        } catch (error) {
-            console.error('API Connection Test Failed:', error);
-            this.showError('Cannot connect to quiz database. Please try again later.');
-        }
-    }
-
-    // Add error display method
-    showError(message) {
-        document.getElementById('questionContainer').innerHTML = `
-            <div class="error-message" style="text-align: center; padding: 20px;">
-                <h2>Error</h2>
-                <p>${message}</p>
-                <button onclick="location.reload()">Try Again</button>
-            </div>
-        `;
     }
 
     async init() {
@@ -42,68 +14,54 @@ class Quiz {
             console.log('Exercise ID from URL:', this.exerciseId);
             
             if (!this.exerciseId) {
-                alert('No exercise ID provided!');
-                return;
+                throw new Error('No exercise ID provided!');
             }
 
             await this.loadExerciseData();
         } catch (error) {
             console.error('Initialization error:', error);
-            document.getElementById('questionContainer').innerHTML = `
-                <div class="error-message" style="text-align: center; padding: 20px;">
-                    <h2>Error Loading Quiz</h2>
-                    <p>Error details: ${error.message}</p>
-                    <p>Exercise ID: ${this.exerciseId}</p>
-                    <button onclick="location.reload()">Try Again</button>
-                </div>
-            `;
+            this.showError(`Failed to initialize quiz: ${error.message}`);
         }
     }
 
     async loadExerciseData() {
         try {
-            const exerciseUrl = `${this.DASHBOARD_API}/exercises/${this.exerciseId}`;
-            console.log('Attempting to fetch exercise from:', exerciseUrl);
-
-            const exerciseResponse = await fetch(exerciseUrl);
-            console.log('Exercise Response Status:', exerciseResponse.status);
+            // Fetch from your existing exercises endpoint
+            const response = await fetch(`${this.DASHBOARD_API}/exercises/${this.exerciseId}`);
             
-            if (!exerciseResponse.ok) {
-                const errorText = await exerciseResponse.text();
-                console.error('Exercise Response Error:', errorText);
-                throw new Error(`Failed to load exercise (${exerciseResponse.status})`);
-            }
-            
-            this.exercise = await exerciseResponse.json();
-            console.log('Exercise Data Received:', this.exercise);
-
-            if (!this.exercise.questions || this.exercise.questions.length === 0) {
-                throw new Error('No questions found for this exercise');
+            if (!response.ok) {
+                throw new Error(`Failed to load exercise (Status: ${response.status})`);
             }
 
-            this.questions = this.exercise.questions;
-            console.log('Questions Data:', this.questions);
+            const data = await response.json();
+            console.log('Received exercise data:', data);
+
+            // Store the exercise data
+            this.exercise = data;
+            this.questions = data.questions;
+
+            if (!this.questions || this.questions.length === 0) {
+                throw new Error('No questions found in this exercise');
+            }
 
             this.setupQuiz();
         } catch (error) {
-            console.error('Error in loadExerciseData:', error);
-            this.showError(`Failed to load quiz data: ${error.message}`);
+            console.error('Error loading exercise:', error);
+            this.showError(error.message);
         }
     }
 
     setupQuiz() {
-        // Display exercise info
-        document.getElementById('quizTitle').textContent = 
-            `${this.exercise.subject} - Chapter ${this.exercise.chapter} - Exercise ${this.exercise.exerciseNumber}`;
-        
-        // Set timer if specified
-        if (this.exercise.timerMinutes) {
-            this.startTimer(this.exercise.timerMinutes * 60);
-        }
-
-        // Display first question
+        // Set initial quiz state
         this.currentQuestionIndex = 0;
         this.score = 0;
+
+        // Display quiz title if available
+        if (this.exercise.title) {
+            document.getElementById('quizTitle').textContent = this.exercise.title;
+        }
+
+        // Start displaying questions
         this.displayQuestion();
     }
 
@@ -113,16 +71,25 @@ class Quiz {
         
         questionContainer.innerHTML = `
             <div class="question">
-                <p>${question.text}</p>
-                ${question.imageUrl ? `<img src="${this.DASHBOARD_API}${question.imageUrl}" alt="Question Image">` : ''}
+                <p>${question.question || question.text}</p>
                 <div class="options">
-                    <button onclick="quiz.checkAnswer('A')">${question.options.A}</button>
-                    <button onclick="quiz.checkAnswer('B')">${question.options.B}</button>
-                    <button onclick="quiz.checkAnswer('C')">${question.options.C}</button>
-                    <button onclick="quiz.checkAnswer('D')">${question.options.D}</button>
+                    ${this.createOptionsHTML(question.options)}
                 </div>
             </div>
         `;
+    }
+
+    createOptionsHTML(options) {
+        // Handle both array and object formats of options
+        if (Array.isArray(options)) {
+            return options.map((option, index) => `
+                <button onclick="quiz.checkAnswer('${index}')">${option}</button>
+            `).join('');
+        } else {
+            return Object.entries(options).map(([key, value]) => `
+                <button onclick="quiz.checkAnswer('${key}')">${value}</button>
+            `).join('');
+        }
     }
 
     checkAnswer(selectedAnswer) {
@@ -140,8 +107,8 @@ class Quiz {
     }
 
     showResults() {
-        const container = document.getElementById('questionContainer');
         const percentage = (this.score / this.questions.length) * 100;
+        const container = document.getElementById('questionContainer');
         
         container.innerHTML = `
             <div class="results">
@@ -152,27 +119,20 @@ class Quiz {
         `;
     }
 
-    startTimer(seconds) {
-        const timerDisplay = document.getElementById('timer');
-        let timeLeft = seconds;
-
-        this.timer = setInterval(() => {
-            const minutes = Math.floor(timeLeft / 60);
-            const secs = timeLeft % 60;
-            timerDisplay.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
-
-            if (timeLeft === 0) {
-                clearInterval(this.timer);
-                this.showResults();
-            }
-            timeLeft--;
-        }, 1000);
+    showError(message) {
+        document.getElementById('questionContainer').innerHTML = `
+            <div class="error-message">
+                <h2>Error Loading Quiz</h2>
+                <p>${message}</p>
+                <p>Exercise ID: ${this.exerciseId}</p>
+                <button onclick="location.reload()">Try Again</button>
+            </div>
+        `;
     }
 }
 
-// Initialize quiz and make it globally available
-let quiz;
+// Initialize quiz when document is ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Document loaded, initializing quiz...');
-    quiz = new Quiz();
+    console.log('Initializing quiz...');
+    window.quiz = new Quiz();
 });
