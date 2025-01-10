@@ -1,6 +1,6 @@
 class Quiz {
     constructor() {
-        // Point to your existing quiz dashboard API
+        // This is your correct API URL
         this.DASHBOARD_API = 'https://quizdashboard-prepventure.onrender.com/api';
         this.init();
     }
@@ -26,15 +26,19 @@ class Quiz {
 
     async loadExerciseData() {
         try {
-            // Fetch from your existing exercises endpoint
-            const response = await fetch(`${this.DASHBOARD_API}/exercises/${this.exerciseId}`);
-            
+            // Log the full URL we're trying to access
+            const exerciseUrl = `${this.DASHBOARD_API}/exercises/${this.exerciseId}`;
+            console.log('Fetching from:', exerciseUrl);
+
+            const response = await fetch(exerciseUrl);
+            console.log('Response status:', response.status);
+
             if (!response.ok) {
-                throw new Error(`Failed to load exercise (Status: ${response.status})`);
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const data = await response.json();
-            console.log('Raw API Response:', data); // Log the entire response
+            console.log('Data received:', data);
 
             // Store the exercise data
             this.exercise = data;
@@ -45,7 +49,7 @@ class Quiz {
             } else if (data.exercise && data.exercise.questions) {
                 this.questions = data.exercise.questions;
             } else {
-                console.error('Data structure:', data); // Log the structure
+                console.error('Data structure:', data);
                 throw new Error('Questions not found in exercise data');
             }
 
@@ -55,7 +59,7 @@ class Quiz {
 
             this.setupQuiz();
         } catch (error) {
-            console.error('Error loading exercise:', error);
+            console.error('Error:', error);
             this.showError(error.message);
         }
     }
