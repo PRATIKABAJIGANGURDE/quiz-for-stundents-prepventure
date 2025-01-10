@@ -34,11 +34,20 @@ class Quiz {
             }
 
             const data = await response.json();
-            console.log('Received exercise data:', data);
+            console.log('Raw API Response:', data); // Log the entire response
 
             // Store the exercise data
             this.exercise = data;
-            this.questions = data.questions;
+            
+            // Check if questions exist in the correct path
+            if (data.questions) {
+                this.questions = data.questions;
+            } else if (data.exercise && data.exercise.questions) {
+                this.questions = data.exercise.questions;
+            } else {
+                console.error('Data structure:', data); // Log the structure
+                throw new Error('Questions not found in exercise data');
+            }
 
             if (!this.questions || this.questions.length === 0) {
                 throw new Error('No questions found in this exercise');
