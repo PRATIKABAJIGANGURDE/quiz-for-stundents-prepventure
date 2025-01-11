@@ -1,6 +1,5 @@
 class Quiz {
     constructor() {
-        // This is your correct API URL
         this.DASHBOARD_API = 'https://quizdashboard-prepventure.onrender.com/api';
         this.init();
     }
@@ -26,55 +25,36 @@ class Quiz {
 
     async loadExerciseData() {
         try {
-            // Log the full URL we're trying to access
-            const exerciseUrl = `${this.DASHBOARD_API}/exercises/${this.exerciseId}`;
-            console.log('Fetching from:', exerciseUrl);
+            const quizUrl = `${this.DASHBOARD_API}/exercises/quiz/${this.exerciseId}`;
+            console.log('Fetching quiz from:', quizUrl);
 
-            const response = await fetch(exerciseUrl);
+            const response = await fetch(quizUrl);
             console.log('Response status:', response.status);
-
+            
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(`Failed to load quiz (Status: ${response.status})`);
             }
 
             const data = await response.json();
-            console.log('Data received:', data);
+            console.log('Quiz data received:', data);
 
-            // Store the exercise data
             this.exercise = data;
-            
-            // Check if questions exist in the correct path
-            if (data.questions) {
-                this.questions = data.questions;
-            } else if (data.exercise && data.exercise.questions) {
-                this.questions = data.exercise.questions;
-            } else {
-                console.error('Data structure:', data);
-                throw new Error('Questions not found in exercise data');
-            }
-
-            if (!this.questions || this.questions.length === 0) {
-                throw new Error('No questions found in this exercise');
-            }
-
+            this.questions = data.questions;
             this.setupQuiz();
         } catch (error) {
-            console.error('Error:', error);
-            this.showError(error.message);
+            console.error('Error loading quiz data:', error);
+            this.showError(`Failed to load quiz: ${error.message}`);
         }
     }
 
     setupQuiz() {
-        // Set initial quiz state
         this.currentQuestionIndex = 0;
         this.score = 0;
 
-        // Display quiz title if available
         if (this.exercise.title) {
             document.getElementById('quizTitle').textContent = this.exercise.title;
         }
 
-        // Start displaying questions
         this.displayQuestion();
     }
 
@@ -93,7 +73,6 @@ class Quiz {
     }
 
     createOptionsHTML(options) {
-        // Handle both array and object formats of options
         if (Array.isArray(options)) {
             return options.map((option, index) => `
                 <button onclick="quiz.checkAnswer('${index}')">${option}</button>
